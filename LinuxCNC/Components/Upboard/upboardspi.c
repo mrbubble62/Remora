@@ -1,7 +1,7 @@
 /* upboardspi.c
 // Support for UP Board SPI & GPIO
 // Userland Linux spidev
-// 
+//
 //
 // Adapted from bcm2835.c
 // C and C++ support for Broadcom BCM 2835 as used in Raspberry Pi
@@ -33,13 +33,13 @@
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
-static const char *device = "/dev/spidev2.0"; //use CS0 device, the CS1 is GPIO pin and slow (10x slower than RPi)
+static const char *device = "/dev/spidev2.0"; // use CS0 device, the CS1 is GPIO pin and slow (10x slower than RPi)
 static uint32_t mode;
 static uint8_t bits = 8;
 static char *input_file;
 static char *output_file;
 static uint32_t speed = 5000000;
-static uint16_t delay=0;
+static uint16_t delay = 0;
 static int verbose;
 static int transfer_size;
 static int iterations;
@@ -68,15 +68,19 @@ static void hex_dump(const void *src, size_t length, size_t line_size, char *pre
 	unsigned char c;
 
 	printf("%s | ", prefix);
-	while (length-- > 0) {
+	while (length-- > 0)
+	{
 		printf("%02X ", *address++);
-		if (!(++i % line_size) || (length == 0 && i % line_size)) {
-			if (length == 0) {
+		if (!(++i % line_size) || (length == 0 && i % line_size))
+		{
+			if (length == 0)
+			{
 				while (i++ % line_size)
 					printf("__ ");
 			}
 			printf(" |");
-			while (line < address) {
+			while (line < address)
+			{
 				c = *line++;
 				printf("%c", (c < 32 || c > 126) ? '.' : c);
 			}
@@ -89,52 +93,53 @@ static void hex_dump(const void *src, size_t length, size_t line_size, char *pre
 
 int rt_upboard_init(void)
 {
-    int res = setup();
-	if(res>0) 
+	// c_gpio setup
+	int res = setup();
+	if (res > 0)
 	{
-		printf("GPIO setup error: %x\n",res);
+		printf("GPIO setup error: %x\n", res);
 		return 0;
 	}
-    return 1; // OK    
+	return 1; // OK
 }
 
 int upboard_spi_init(void)
 {
-	//res = init_gpio(16);
-    return 1; // OK    
+	// res = init_gpio(16);
+	return 1; // OK
 }
 
 // open spi device
 int upboard_spi_begin(void)
 {
-    fd = open(device, O_RDWR);
-	if (fd < 0){
+	fd = open(device, O_RDWR);
+	if (fd < 0)
+	{
 		pabort("can't open device");
-        return 0;
-    } 
-    return 1; // OK  
+		return 0;
+	}
+	return 1; // OK
 }
-
 
 int upboard_spi_close(void)
 {
-    fd = 0;
-    return 1;
+	fd = 0;
+	return 1;
 }
 
-//TBD
+// TBD
 void upboard_spi_setDataMode()
 {
-   //  BCM2835_SPI_MODE0 = 0,  /*!< CPOL = 0, CPHA = 0 */
-   
-     mode |= SPI_CPHA;
-    //mode |= SPI_CPOL;
- 
+	//  BCM2835_SPI_MODE0 = 0,  /*!< CPOL = 0, CPHA = 0 */
+
+	mode |= SPI_CPHA;
+	// mode |= SPI_CPOL;
 }
 
-//Set SPI speed Hz
-void upboard_spi_set_speed( uint32_t speed ){
-    int ret = ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, &speed);
+// Set SPI speed Hz
+void upboard_spi_set_speed(uint32_t speed)
+{
+	int ret = ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, &speed);
 	if (ret == -1)
 		pabort("can't set max speed hz");
 }
@@ -157,12 +162,13 @@ void transfer(int fd, uint8_t const *tx, uint8_t const *rx, size_t len)
 		tr.tx_nbits = 4;
 	else if (mode & SPI_TX_DUAL)
 		tr.tx_nbits = 2;
-    if (mode & SPI_RX_QUAD)
+	if (mode & SPI_RX_QUAD)
 		tr.rx_nbits = 4;
 	else if (mode & SPI_RX_DUAL)
 		tr.rx_nbits = 2;
-	if (!(mode & SPI_LOOP)) {
-		if (mode & ( SPI_TX_QUAD | SPI_TX_DUAL))
+	if (!(mode & SPI_LOOP))
+	{
+		if (mode & (SPI_TX_QUAD | SPI_TX_DUAL))
 			tr.rx_buf = 0;
 		else if (mode & (SPI_RX_QUAD | SPI_RX_DUAL))
 			tr.tx_buf = 0;
@@ -179,7 +185,7 @@ void transfer(int fd, uint8_t const *tx, uint8_t const *rx, size_t len)
 		hex_dump(rx, len, 32, "RX");
 }
 
-// SPI buffered transfer 
+// SPI buffered transfer
 void upboard_spi_transfernb(uint8_t *tx, uint8_t *rx, uint32_t len)
 {
 	tx = malloc(len);
@@ -198,24 +204,26 @@ void upboard_spi_transfernb(uint8_t *tx, uint8_t *rx, uint32_t len)
 // Set MSB/LSB order: SPI_BIT_ORDER_LSBFIRST / SPI_BIT_ORDER_MSBFIRST
 void upboard_spi_setBitOrder(uint8_t order)
 {
-	int lsb_first = (order==SPI_BIT_ORDER_LSBFIRST)?0:1;
+	int lsb_first = (order == SPI_BIT_ORDER_LSBFIRST) ? 0 : 1;
 	int ret = ioctl(fd, SPI_IOC_RD_LSB_FIRST, &lsb_first);
-	if (ret==-1) {
+	if (ret == -1)
+	{
 		pabort("ioctl(SPI_IOC_RD_LSB_FIRST) failed");
 	}
 	ret = ioctl(fd, SPI_IOC_WR_LSB_FIRST, &lsb_first);
-	if (ret==-1) {
+	if (ret == -1)
+	{
 		pabort("ioctl(SPI_IOC_WR_LSB_FIRST) failed");
 	}
 }
 
 /*
-* GPIO
-*/
+ * GPIO
+ */
 
-void upboard_gpio_setup(int pin,int direction)
+void upboard_gpio_setup(int pin, int direction)
 {
-	setup_gpio(pin,direction,0);
+	setup_gpio(pin, direction, 0);
 }
 
 void upboard_gpio_close()
@@ -226,30 +234,30 @@ void upboard_gpio_close()
 /* Set output pin */
 void upboard_gpio_set(int pin)
 {
-   output_gpio(pin,1);
+	output_gpio(pin, 1);
 }
 
 /* Clear output pin */
 void upboard_gpio_clr(int pin)
 {
-   output_gpio(pin,0);
+	output_gpio(pin, 0);
 }
 
 int upboard_gpio_direction(int pin, int direction)
 {
-   if(gpio_function(pin)!=direction)
-   {
-   		output_gpio(pin,1);
+	if (gpio_function(pin) != direction)
+	{
+		output_gpio(pin, 1);
 		printf("toggle direction");
-   }
-   return gpio_function(pin);
+	}
+	return gpio_function(pin);
 }
 
-/* SPI bit order. SPI0 only supports MSBFIRST, so we instead 
+/* SPI bit order. SPI0 only supports MSBFIRST, so we instead
  * have a software based bit reversal, based on a contribution by Damiano Benedetti
  */
 
-//static uint8_t spi_bit_order = SPI_BIT_ORDER_MSBFIRST;
+// static uint8_t spi_bit_order = SPI_BIT_ORDER_MSBFIRST;
 
 // static uint8_t correct_order(uint8_t b)
 // {
@@ -259,7 +267,7 @@ int upboard_gpio_direction(int pin, int direction)
 // 	return b;
 // }
 
-// static uint8_t byte_reverse_table[] = 
+// static uint8_t byte_reverse_table[] =
 // {
 //     0x00, 0x80, 0x40, 0xc0, 0x20, 0xa0, 0x60, 0xe0,
 //     0x10, 0x90, 0x50, 0xd0, 0x30, 0xb0, 0x70, 0xf0,
